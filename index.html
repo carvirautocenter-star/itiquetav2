@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>E-Tiqueta Studio Pro</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+        tailwind.config = { theme: { extend: { colors: { brand: { orange: '#FF6B00' } } } } }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        @media print {
+            body * { visibility: hidden !important; }
+            #print-wrapper, #print-wrapper * { visibility: visible !important; }
+            #print-wrapper {
+                position: absolute !important;
+                left: 0 !important; top: 0 !important;
+                width: 210mm !important; margin: 0 !important;
+                padding: 0 !important; box-shadow: none !important;
+                background: white !important; display: flex !important;
+                justify-content: center !important;
+            }
+            .no-print { display: none !important; }
+            @page { size: A4 portrait; margin: 0; }
+
+            .a4-sheet {
+                transform: none !important; box-shadow: none !important;
+                page-break-after: always; page-break-inside: avoid;
+                display: block !important; margin: 0 auto !important;
+            }
+            
+            body.print-mode-front #a4PageVersoWrapper { display: none !important; }
+            body.print-mode-verso #a4PageFrontWrapper { display: none !important; }
+            body.print-mode-both #a4PageFrontWrapper, 
+            body.print-mode-both #a4PageVersoWrapper { display: flex !important; }
+        }
+
+        .a4-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow: visible;
+        }
+
+        /* PROPORÇÃO A4 PERFEITA (210mm x 297mm) */
+        .a4-sheet {
+            width: 210mm;
+            height: 297mm;
+            min-height: 297mm;
+            max-height: 297mm;
+            aspect-ratio: 210 / 297;
+            box-sizing: border-box;
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            margin: 0 auto 20px auto;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transform-origin: top center;
+        }
+
+        .labels-grid {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            box-sizing: border-box;
+            justify-content: center;
+            align-content: flex-start;
+        }
+
+        .label-cell {
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .label-card-content {
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: space-between;
+            position: relative; box-sizing: border-box;
+            text-align: center; user-select: none; overflow: hidden;
+        }
+
+        .template-card {
+            cursor: pointer; border: 2px solid #1e293b;
+            border-radius: 10px; padding: 6px;
+            text-align: center; transition: all 0.2s;
+        }
+        .template-card:hover { border-color: #64748b; }
+        .template-card.active { border-color: #f97316; background: rgba(249,115,22,0.1); }
+
+        .mirror-label { transform: scaleX(-1); }
+
+        .slider-pill {
+            font-size: 10px; font-family: ui-monospace, monospace;
+            color: #fb923c; min-width: 36px; text-align: right;
+        }
+
+        .logo-upload-cta {
+            border: 2px dashed #f97316; background: rgba(249,115,22,0.08);
+            border-radius: 10px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.2s;
+        }
+        .logo-upload-cta:hover { background: rgba(249,115,22,0.15); border-color: #fb923c; }
+
+        @media (max-width: 1023px) {
+            #mainSidebar {
+                position: fixed;
+                bottom: 0; left: 0; right: 0; top: 50px;
+                z-index: 40; background: #0f172a;
+                border-top: 2px solid #334155;
+                border-radius: 16px 16px 0 0;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                transform: translateY(105%);
+                box-shadow: 0 -10px 25px rgba(0,0,0,0.8);
+                display: flex; flex-direction: column;
+            }
+            #mainSidebar.mobile-open { transform: translateY(0); }
+            .mobile-overlay {
+                position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+                backdrop-filter: blur(4px); z-index: 35; display: none;
+            }
+            .mobile-overlay.active { display: block; }
+        }
+
+        #print-wrapper {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; margin: 0 auto; text-align: center;
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-orange-500 selection:text-white">
+
+    <div id="mobileOverlay" class="mobile-overlay" onclick="closeMobileSidebar()"></div>
+
+    <!-- HEADER SUPERIOR -->
+    <header class="bg-slate-900 border-b border-slate-800 px-3 lg:px-6 py-2 flex items-center justify-between sticky top-0 z-50 no-print">
+        <div class="flex items-center gap-2">
+            <div class="bg-gradient-to-tr from-orange-600 to-amber-500 p-1.5 rounded-xl shadow-lg shadow-orange-600/30">
+                <i data-lucide="tag" class="w-4 h-4 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-black text-base lg:text-lg text-white tracking-tight leading-none flex items-center gap-1">
+                    E-Tiqueta <span class="text-orange-500">Studio</span>
+                    <span class="text-[8px] bg-orange-600/20 text-orange-400 px-1 py-0.2 rounded font-bold">PRO</span>
+                </h1>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+            <button onclick="exportSVG()" title="Exportar SVG Vetorizado" class="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-1">
+                <i data-lucide="pen-tool" class="w-3.5 h-3.5"></i> <span>SVG</span>
+            </button>
+            <button onclick="exportSheetPNG()" title="Exportar Imagem PNG" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition flex items-center gap-1">
+                <i data-lucide="file-image" class="w-3.5 h-3.5 text-orange-400"></i> <span class="hidden sm:inline">PNG</span>
+            </button>
+            <button onclick="exportPDF()" title="Exportar PDF" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition flex items-center gap-1">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-red-400"></i> <span class="hidden sm:inline">PDF</span>
+            </button>
+            <button onclick="printAll()" title="Imprimir Etiquetas" class="px-3 py-1.5 bg-gradient-to-r from-orange-600 to-orange-500 text-white text-xs font-bold rounded-lg shadow-md transition flex items-center gap-1">
+                <i data-lucide="printer" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Imprimir</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+
+        <!-- SIDEBAR DE CONFIGURAÇÕES -->
+        <aside id="mainSidebar" class="w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col h-auto lg:h-[calc(100vh-53px)]">
+
+            <div class="lg:hidden p-3 bg-slate-800 border-b border-slate-700 flex items-center justify-between sticky top-0 z-40">
+                <span class="text-xs font-extrabold text-slate-100 uppercase tracking-wider">Ajustes & Design</span>
+                <button onclick="closeMobileSidebar()" class="p-1.5 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="flex border-b border-slate-800 bg-slate-900 sticky top-0 lg:top-0 z-30 overflow-x-auto no-scrollbar">
+                <button onclick="switchTab('design')" id="tab-btn-design" class="flex-1 min-w-[55px] py-2.5 px-1 text-[10px] font-bold text-orange-500 border-b-2 border-orange-500 flex flex-col items-center gap-1 transition">
+                    <i data-lucide="palette" class="w-4 h-4"></i> Visual
+                </button>
+                <button onclick="switchTab('textos')" id="tab-btn-textos" class="flex-1 min-w-[55px] py-2.5 px-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex flex-col items-center gap-1 transition">
+                    <i data-lucide="type" class="w-4 h-4"></i> Textos
+                </button>
+                <button onclick="switchTab('icons')" id="tab-btn-icons" class="flex-1 min-w-[55px] py-2.5 px-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex flex-col items-center gap-1 transition">
+                    <i data-lucide="image-plus" class="w-4 h-4"></i> Logo
+                </button>
+                <button onclick="switchTab('qrcode')" id="tab-btn-qrcode" class="flex-1 min-w-[55px] py-2.5 px-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex flex-col items-center gap-1 transition">
+                    <i data-lucide="qr-code" class="w-4 h-4"></i> QR Code
+                </button>
+                <button onclick="switchTab('verso')" id="tab-btn-verso" class="flex-1 min-w-[55px] py-2.5 px-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex flex-col items-center gap-1 transition">
+                    <i data-lucide="clipboard-list" class="w-4 h-4"></i> Verso
+                </button>
+                <button onclick="switchTab('layout')" id="tab-btn-layout" class="flex-1 min-w-[55px] py-2.5 px-1 text-[10px] font-bold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex flex-col items-center gap-1 transition">
+                    <i data-lucide="grid" class="w-4 h-4"></i> Folha
+                </button>
+            </div>
+
+            <div class="p-4 space-y-4 flex-1 overflow-y-auto">
+
+                <!-- TAB 1: DESIGN -->
+                <div id="tab-design" class="space-y-4">
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider">Modelos Rápidos</h3>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div onclick="applyTemplate('classic', event)" class="template-card active"><div class="h-8 rounded mb-1 bg-gradient-to-br from-orange-500 to-orange-600"></div><span class="text-[9px] font-bold text-slate-300">Clássico</span></div>
+                        <div onclick="applyTemplate('dark', event)" class="template-card"><div class="h-8 rounded mb-1 bg-gradient-to-br from-slate-800 to-slate-950"></div><span class="text-[9px] font-bold text-slate-300">Escuro</span></div>
+                        <div onclick="applyTemplate('blue', event)" class="template-card"><div class="h-8 rounded mb-1 bg-gradient-to-br from-blue-600 to-blue-800"></div><span class="text-[9px] font-bold text-slate-300">Azul</span></div>
+                        <div onclick="applyTemplate('green', event)" class="template-card"><div class="h-8 rounded mb-1 bg-gradient-to-br from-green-600 to-green-800"></div><span class="text-[9px] font-bold text-slate-300">Verde</span></div>
+                        <div onclick="applyTemplate('red', event)" class="template-card"><div class="h-8 rounded mb-1 bg-gradient-to-br from-red-600 to-red-800"></div><span class="text-[9px] font-bold text-slate-300">Vermelho</span></div>
+                        <div onclick="applyTemplate('purple', event)" class="template-card"><div class="h-8 rounded mb-1 bg-gradient-to-br from-purple-600 to-purple-800"></div><span class="text-[9px] font-bold text-slate-300">Roxo</span></div>
+                    </div>
+
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider pt-2 border-t border-slate-800">Cores e Bordas da Etiqueta</h3>
+                    
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] font-medium text-slate-300">Cantos da Etiqueta (0px = Reto)</label>
+                            <span id="radiusVal" class="slider-pill">12 px</span>
+                        </div>
+                        <input type="range" id="labelRadius" min="0" max="30" value="12" oninput="updateSliderLabel('radiusVal', this.value + ' px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-medium text-slate-300 mb-1">Cor Fundo</label>
+                            <input type="color" id="bgColor" value="#FF6B00" oninput="updateAllLive()" class="w-full h-8 bg-slate-950 rounded-lg p-0.5 border border-slate-800 cursor-pointer">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-slate-300 mb-1">Cor Texto Padrão</label>
+                            <input type="color" id="textColor" value="#FFFFFF" oninput="updateAllLive()" class="w-full h-8 bg-slate-950 rounded-lg p-0.5 border border-slate-800 cursor-pointer">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-medium text-slate-300 mb-1">Cor Secundária</label>
+                            <input type="color" id="secondaryColor" value="#1E293B" oninput="updateAllLive()" class="w-full h-8 bg-slate-950 rounded-lg p-0.5 border border-slate-800 cursor-pointer">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-slate-300 mb-1">Estilo do Card</label>
+                            <select id="cardStyle" onchange="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2 py-1.5 border border-slate-800">
+                                <option value="flat">Plano</option>
+                                <option value="gradient">Gradiente</option>
+                                <option value="striped">Listrado</option>
+                                <option value="bordered">Borda Dupla</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider pt-2 border-t border-slate-800">Modo Espelho</h3>
+                    <div class="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
+                        <input type="checkbox" id="mirrorMode" onchange="updateAllLive()" class="accent-orange-500 w-4 h-4 cursor-pointer">
+                        <label for="mirrorMode" class="text-[11px] text-slate-200 font-bold cursor-pointer">Espelhar Frente (Vidro interno)</label>
+                    </div>
+                    <div class="flex items-center gap-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
+                        <input type="checkbox" id="mirrorVerso" onchange="updateAllLive()" class="accent-orange-500 w-4 h-4 cursor-pointer">
+                        <label for="mirrorVerso" class="text-[11px] text-slate-200 font-bold cursor-pointer">Espelhar Verso</label>
+                    </div>
+                </div>
+
+                <!-- TAB 2: TEXTOS DA FRENTE -->
+                <div id="tab-textos" class="space-y-3 hidden">
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider">Título Superior (2 Cores)</h3>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[9px] font-medium text-slate-300 mb-0.5">Texto 1 (Ex: E-TIQUETA)</label>
+                            <input type="text" id="headerText1" value="E-TIQUETA" oninput="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2 py-1.5 border border-slate-800 font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-medium text-slate-300 mb-0.5">Cor Texto 1</label>
+                            <input type="color" id="headerColor1" value="#2563EB" oninput="updateAllLive()" class="w-full h-8 bg-slate-950 rounded-lg p-0.5 border border-slate-800 cursor-pointer">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[9px] font-medium text-slate-300 mb-0.5">Texto 2 (Ex: STUDIO)</label>
+                            <input type="text" id="headerText2" value="STUDIO" oninput="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2 py-1.5 border border-slate-800 font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-medium text-slate-300 mb-0.5">Cor Texto 2</label>
+                            <input type="color" id="headerColor2" value="#FFFFFF" oninput="updateAllLive()" class="w-full h-8 bg-slate-950 rounded-lg p-0.5 border border-slate-800 cursor-pointer">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-0.5">
+                            <span class="text-[9px] text-slate-400">Posição Vertical Título</span>
+                            <span id="headerOffsetYVal" class="slider-pill">0px</span>
+                        </div>
+                        <input type="range" id="headerOffsetY" min="-20" max="20" value="0" oninput="updateSliderLabel('headerOffsetYVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider pt-2 border-t border-slate-800">Demais Textos</h3>
+
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-300 mb-0.5">Subtítulo</label>
+                        <input type="text" id="subTitleText" placeholder="Ex: Centro Automotivo" oninput="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2.5 py-1.5 border border-slate-800">
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-[9px] text-slate-400">Posição Vertical</span>
+                            <span id="subOffsetYVal" class="slider-pill">0px</span>
+                        </div>
+                        <input type="range" id="subOffsetY" min="-20" max="20" value="0" oninput="updateSliderLabel('subOffsetYVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-300 mb-0.5">Nome da Empresa</label>
+                        <input type="text" id="brandText" value="AUTOBOX AUTO CENTER" placeholder="Ex: AUTOBOX AUTO CENTER" oninput="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2.5 py-1.5 border border-slate-800 font-bold">
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-[9px] text-slate-400">Posição Vertical</span>
+                            <span id="brandOffsetYVal" class="slider-pill">0px</span>
+                        </div>
+                        <input type="range" id="brandOffsetY" min="-20" max="20" value="0" oninput="updateSliderLabel('brandOffsetYVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-300 mb-0.5">Rodapé</label>
+                        <input type="text" id="footerText" placeholder="Ex: Volte Sempre!" oninput="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2.5 py-1.5 border border-slate-800">
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-[9px] text-slate-400">Posição Vertical</span>
+                            <span id="footerOffsetYVal" class="slider-pill">0px</span>
+                        </div>
+                        <input type="range" id="footerOffsetY" min="-20" max="20" value="0" oninput="updateSliderLabel('footerOffsetYVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-300 mb-0.5">Próxima Troca</label>
+                        <input type="text" id="nextChangeText" placeholder="Ex: 10.000 KM ou 6 Meses" oninput="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2.5 py-1.5 border border-slate-800">
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-[9px] text-slate-400">Posição Vertical</span>
+                            <span id="nextOffsetYVal" class="slider-pill">0px</span>
+                        </div>
+                        <input type="range" id="nextOffsetY" min="-20" max="20" value="0" oninput="updateSliderLabel('nextOffsetYVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider pt-2 border-t border-slate-800">Tamanhos de Fonte</h3>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] font-medium text-slate-300">Título</label>
+                            <span id="headerSizeVal" class="slider-pill">13px</span>
+                        </div>
+                        <input type="range" id="headerSize" min="8" max="28" value="13" oninput="updateSliderLabel('headerSizeVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] font-medium text-slate-300">Empresa</label>
+                            <span id="brandSizeVal" class="slider-pill">10px</span>
+                        </div>
+                        <input type="range" id="brandSize" min="6" max="22" value="10" oninput="updateSliderLabel('brandSizeVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+                </div>
+
+                <!-- TAB 3: LOGO DA EMPRESA -->
+                <div id="tab-icons" class="space-y-3 hidden">
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider">Logo da Empresa</h3>
+                    <p class="text-[10px] text-slate-400 leading-tight">Você pode exibir a Imagem da Logo e o Nome Escrito ao mesmo tempo na etiqueta.</p>
+                    
+                    <div class="logo-upload-cta" onclick="document.getElementById('libraryUploadInput').click()">
+                        <i data-lucide="image-plus" class="w-6 h-6 text-orange-400 mx-auto mb-1"></i>
+                        <p class="text-xs font-bold text-orange-400">Carregar Logo (Imagem)</p>
+                        <p class="text-[9px] text-slate-500 mt-0.5">PNG, JPG, SVG sem fundo</p>
+                    </div>
+                    <input type="file" id="libraryUploadInput" accept="image/*" onchange="handleLogoUpload(event)" class="hidden">
+
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-300 block mb-1">Estado Atual</label>
+                        <div id="currentLogoPreview" class="flex items-center justify-center bg-slate-950 border border-dashed border-slate-700 rounded-lg p-3 min-h-[60px]">
+                            <p class="text-[10px] text-slate-500">Nenhuma Imagem de Logo Enviada</p>
+                        </div>
+                        <button onclick="removeBrandLogo()" class="w-full mt-2 py-1.5 text-[10px] text-red-400 bg-red-950/20 hover:bg-red-950/40 rounded border border-red-900/40 font-bold">Remover Imagem da Logo</button>
+                    </div>
+                </div>
+
+                <!-- TAB 4: QR CODE -->
+                <div id="tab-qrcode" class="space-y-3 hidden">
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider">Conteúdo do QR Code</h3>
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-300 mb-1">Link ou Texto</label>
+                        <input type="text" id="qrText" value="https://instagram.com" oninput="markQRStale()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2.5 py-1.5 border border-slate-800 font-mono">
+                    </div>
+
+                    <button id="generateQRBtn" onclick="generateQRCode()" class="w-full py-2 bg-gradient-to-r from-orange-600 to-amber-500 text-white text-xs font-black rounded-lg shadow-md transition flex items-center justify-center gap-2">
+                        <i data-lucide="qr-code" class="w-4 h-4"></i> GERAR / ATUALIZAR QR CODE
+                    </button>
+
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider pt-2 border-t border-slate-800">Ajustes da Moldura e Borda</h3>
+                    
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] font-medium text-slate-300">Canto Arredondado da Moldura</label>
+                            <span id="qrBorderRadiusVal" class="slider-pill">12px</span>
+                        </div>
+                        <input type="range" id="qrBorderRadius" min="0" max="25" value="12" oninput="updateSliderLabel('qrBorderRadiusVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[9px] text-slate-300 mb-1">Cor Fundo QR</label>
+                            <input type="color" id="qrBgColor" value="#FFFFFF" oninput="updateAllLive()" class="w-full h-7 bg-slate-950 rounded p-0.5 border border-slate-800 cursor-pointer">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] text-slate-300 mb-1">Cor da Borda</label>
+                            <input type="color" id="qrBorderColor" value="#E2E8F0" oninput="updateAllLive()" class="w-full h-7 bg-slate-950 rounded p-0.5 border border-slate-800 cursor-pointer">
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] font-medium text-slate-300">Tamanho do QR Code</label>
+                            <span id="qrSizePercentVal" class="slider-pill">75%</span>
+                        </div>
+                        <input type="range" id="qrSizePercent" min="40" max="90" value="75" oninput="updateSliderLabel('qrSizePercentVal', this.value + '%'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider pt-2 border-t border-slate-800">Ícone Central do QR Code</h3>
+                    <div class="logo-upload-cta" onclick="document.getElementById('qrIconUploadInput').click()">
+                        <i data-lucide="image-plus" class="w-5 h-5 text-orange-400 mx-auto mb-1"></i>
+                        <p class="text-xs font-bold text-orange-400">Enviar Ícone da Galeria</p>
+                    </div>
+                    <input type="file" id="qrIconUploadInput" accept="image/*" onchange="handleQRIconUpload(event)" class="hidden">
+
+                    <div class="mt-2">
+                        <label class="block text-[10px] font-medium text-slate-300 mb-1">Ou Selecionar Ícone Padrão</label>
+                        <select id="qrIconSelect" onchange="changeQRIcon(this.value)" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2 py-1.5 border border-slate-800">
+                            <option value="oil">🛢️ Galão de Óleo</option>
+                            <option value="car">🚗 Carro</option>
+                            <option value="wrench">🔧 Chave de Fenda</option>
+                            <option value="drop">💧 Gota de Óleo</option>
+                            <option value="custom">🖼️ Ícone Enviado (Galeria)</option>
+                            <option value="none">❌ Sem Ícone</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- TAB 5: VERSO -->
+                <div id="tab-verso" class="space-y-3 hidden">
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider">Ajustes do Verso</h3>
+                    <div class="flex items-center gap-2 p-2 bg-gradient-to-r from-orange-950/60 to-amber-950/40 rounded-xl border border-orange-600/50">
+                        <input type="checkbox" id="enableVerso" onchange="updateVersoVisibility()" class="accent-orange-500 w-4 h-4 cursor-pointer" checked>
+                        <label for="enableVerso" class="text-[11px] text-orange-200 font-black cursor-pointer">Habilitar Página do Verso</label>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-300 mb-1">Título do Verso</label>
+                        <input type="text" id="versoTitle" value="REGISTRO DE TROCA DE ÓLEO" oninput="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2.5 py-1.5 border border-slate-800">
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-[9px] text-slate-400">Posição Vertical do Título</span>
+                            <span id="versoTitleOffsetYVal" class="slider-pill">0px</span>
+                        </div>
+                        <input type="range" id="versoTitleOffsetY" min="-20" max="20" value="0" oninput="updateSliderLabel('versoTitleOffsetYVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-medium text-slate-300 mb-1">Campos Tabela (Linha por Linha)</label>
+                        <textarea id="versoFields" rows="5" oninput="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2.5 py-1.5 border border-slate-800 font-mono">Cliente:
+Veículo:
+Placa:
+KM Atual:
+Data:
+Óleo:
+Filtro:
+Responsável:</textarea>
+                        <div class="flex justify-between items-center mt-1">
+                            <span class="text-[9px] text-slate-400">Posição Vertical da Tabela</span>
+                            <span id="versoTableOffsetYVal" class="slider-pill">0px</span>
+                        </div>
+                        <input type="range" id="versoTableOffsetY" min="-20" max="20" value="0" oninput="updateSliderLabel('versoTableOffsetYVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                    </div>
+
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider pt-2 border-t border-slate-800">Estilo e Espaçamento dos Campos</h3>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[9px] text-slate-400">Tamanho Fonte</span>
+                                <span id="versoFontSizeVal" class="slider-pill">7px</span>
+                            </div>
+                            <input type="range" id="versoFontSize" min="5" max="14" value="7" oninput="updateSliderLabel('versoFontSizeVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[9px] text-slate-400">Espaço Linhas</span>
+                                <span id="versoLineGapVal" class="slider-pill">2.5px</span>
+                            </div>
+                            <input type="range" id="versoLineGap" min="0" max="10" step="0.5" value="2.5" oninput="updateSliderLabel('versoLineGapVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[9px] text-slate-300 mb-1">Estilo da Linha</label>
+                            <select id="versoLineStyle" onchange="updateAllLive()" class="w-full bg-slate-950 text-slate-100 text-xs rounded-lg px-2 py-1.5 border border-slate-800">
+                                <option value="dashed">Pontilhada/Tracejada</option>
+                                <option value="solid">Contínua (Sólida)</option>
+                                <option value="dotted">Pontos Redondos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-0.5">
+                                <span class="text-[9px] text-slate-400">Espessura Linha</span>
+                                <span id="versoLineWidthVal" class="slider-pill">1px</span>
+                            </div>
+                            <input type="range" id="versoLineWidth" min="0.5" max="3" step="0.5" value="1" oninput="updateSliderLabel('versoLineWidthVal', this.value + 'px'); updateAllLive()" class="w-full accent-orange-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 6: DIMENSIONAMENTO & A4 -->
+                <div id="tab-layout" class="space-y-3 hidden">
+                    <h3 class="text-[10px] uppercase font-extrabold text-orange-400 tracking-wider">Tamanho da Etiqueta e A4</h3>
+
+                    <div class="grid grid-cols-2 gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-300 mb-1">Largura (mm)</label>
+                            <input type="number" id="labelWidthMm" min="20" max="150" value="50" oninput="recalculateAutoGrid()" class="w-full bg-slate-900 text-orange-400 font-bold text-sm rounded-lg px-2 py-1 border border-slate-700 text-center">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-300 mb-1">Altura (mm)</label>
+                            <input type="number" id="labelHeightMm" min="20" max="250" value="50" oninput="recalculateAutoGrid()" class="w-full bg-slate-900 text-orange-400 font-bold text-sm rounded-lg px-2 py-1 border border-slate-700 text-center">
+                        </div>
+                    </div>
+
+                    <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-[10px] text-slate-300 space-y-1">
+                        <div class="flex justify-between"><span>Grade A4 Automática:</span> <strong id="gridCalcVal" class="text-orange-400 font-mono">3 x 5</strong></div>
+                        <div class="flex justify-between"><span>Rendimento Total:</span> <strong id="totalLabelsCount" class="text-emerald-400 font-mono">15 un por folha</strong></div>
+                    </div>
+
+                    <input type="hidden" id="gridCols" value="3">
+                    <input type="hidden" id="gridRows" value="5">
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] font-medium text-slate-300">Margem da Folha</label>
+                            <span id="marginVal" class="slider-pill">10 mm</span>
+                        </div>
+                        <input type="range" id="pageMargin" min="2" max="25" value="10" oninput="updateSliderLabel('marginVal', this.value + ' mm'); recalculateAutoGrid()" class="w-full accent-orange-500">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[10px] font-medium text-slate-300">Espaço Entre Etiquetas</label>
+                            <span id="gapVal" class="slider-pill">4 mm</span>
+                        </div>
+                        <input type="range" id="gridGap" min="0" max="15" value="4" oninput="updateSliderLabel('gapVal', this.value + ' mm'); recalculateAutoGrid()" class="w-full accent-orange-500">
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- MINI-PREVIEW FIXO AO VIVO DENTRO DO MOBILE SHEET -->
+            <div class="lg:hidden p-2 bg-slate-950 border-t border-slate-800 flex items-center justify-center gap-3">
+                <div class="flex flex-col items-center">
+                    <span class="text-[8px] font-bold text-orange-400 uppercase">Preview Ao Vivo</span>
+                    <div id="mobileLivePreview" class="bg-white rounded overflow-hidden shadow-lg" style="width:34mm; height:48mm;"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ÁREA CENTRAL DE PREVIEW -->
+        <main id="mainWorkspace" class="flex-1 bg-slate-950 p-2 sm:p-4 lg:p-6 flex flex-col items-center justify-start overflow-auto w-full">
+
+            <!-- CONTROLE DE VISUALIZAÇÃO -->
+            <div class="w-full max-w-4xl bg-slate-900/90 border border-slate-800 rounded-xl p-2 mb-3 flex flex-wrap items-center justify-between gap-2 backdrop-blur shadow-md no-print">
+                <div class="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800 flex-wrap justify-center mx-auto sm:mx-0">
+                    <button onclick="setViewMode('single')" id="btn-view-single" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-white bg-orange-600 transition flex items-center gap-1">
+                        <i data-lucide="square" class="w-3 h-3"></i> Individual
+                    </button>
+                    <button onclick="setViewMode('sheet')" id="btn-view-sheet" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-400 hover:text-white transition flex items-center gap-1">
+                        <i data-lucide="file-text" class="w-3 h-3"></i> Frente A4
+                    </button>
+                    <button onclick="setViewMode('verso')" id="btn-view-verso" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-400 hover:text-white transition flex items-center gap-1">
+                        <i data-lucide="clipboard-list" class="w-3 h-3"></i> Verso A4
+                    </button>
+                    <button onclick="setViewMode('both')" id="btn-view-both" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-400 hover:text-white transition flex items-center gap-1">
+                        <i data-lucide="copy" class="w-3 h-3"></i> Ambas A4
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 mx-auto sm:mx-0">
+                    <i data-lucide="zoom-in" class="w-3.5 h-3.5 text-slate-400"></i>
+                    <input type="range" id="zoomRange" min="20" max="100" value="65" oninput="applyZoom(this.value)" class="w-20 accent-orange-500 cursor-pointer">
+                    <span id="zoomVal" class="text-[10px] text-slate-300 font-mono w-8">65%</span>
+                </div>
+            </div>
+
+            <!-- WORKSPACE DE PREVIEW CENTRALIZADO -->
+            <div id="print-wrapper" class="py-2 w-full flex flex-col items-center justify-center overflow-visible">
+
+                <!-- ETIQUETA INDIVIDUAL MONTAGEM -->
+                <div id="singlePage" class="w-full flex flex-col sm:flex-row items-center justify-center gap-6 my-2">
+                    <div class="flex flex-col items-center">
+                        <span class="text-[10px] font-bold text-orange-400 uppercase mb-1">Frente</span>
+                        <div id="singleLabelWrapper" class="bg-white shadow-2xl transition-all" style="width: 50mm; height: 50mm;">
+                            <div id="singleLabelContainer" class="w-full h-full"></div>
+                        </div>
+                    </div>
+                    <div id="singleVersoWrapperWrapper" class="flex flex-col items-center">
+                        <span class="text-[10px] font-bold text-sky-400 uppercase mb-1">Verso</span>
+                        <div id="singleVersoWrapper" class="bg-white shadow-2xl transition-all" style="width: 50mm; height: 50mm;">
+                            <div id="singleVersoContainer" class="w-full h-full"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FOLHA A4 FRENTE PERFEITAMENTE CENTRALIZADA E RESPONSIVA -->
+                <div id="a4PageFrontWrapper" class="a4-wrapper" style="display: none;">
+                    <div id="a4PageFront" class="a4-sheet">
+                        <div id="labelsContainer" class="labels-grid"></div>
+                    </div>
+                </div>
+
+                <!-- FOLHA A4 VERSO PERFEITAMENTE CENTRALIZADA E RESPONSIVA -->
+                <div id="a4PageVersoWrapper" class="a4-wrapper" style="display: none;">
+                    <div id="a4PageVerso" class="a4-sheet">
+                        <div id="versoContainer" class="labels-grid"></div>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <!-- BOTTOM NAVBAR PARA MOBILE -->
+    <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 z-30 flex items-center justify-around px-1 py-1.5 no-print">
+        <button onclick="openMobileSidebar('design')" class="flex flex-col items-center text-slate-400 hover:text-orange-500 py-1 px-2">
+            <i data-lucide="sliders" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">Ajustes</span>
+        </button>
+        <button onclick="setViewMode('single')" class="flex flex-col items-center text-orange-500 py-1 px-2">
+            <i data-lucide="square" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">Etiqueta</span>
+        </button>
+        <button onclick="setViewMode('both')" class="flex flex-col items-center text-slate-400 hover:text-orange-500 py-1 px-2">
+            <i data-lucide="file-text" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">Folha A4</span>
+        </button>
+        <button onclick="exportSVG()" class="flex flex-col items-center text-emerald-400 py-1 px-2">
+            <i data-lucide="download" class="w-5 h-5"></i>
+            <span class="text-[9px] font-bold mt-0.5">Salvar SVG</span>
+        </button>
+    </nav>
+
+    <script>
+        const DEFAULT_ICONS = {
+            oil: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="w-full h-full"><rect x="80" y="160" width="352" height="280" rx="20" fill="%23FF6B00"/><rect x="160" y="80" width="192" height="100" rx="15" fill="%23D97706"/><circle cx="256" cy="300" r="70" fill="%23FFFFFF"/><path d="M256 240c-25 22-45 45-45 65 0 25 20 45 45 45s45-20 45-45c0-20-20-43-45-65z" fill="%23FF6B00"/></svg>`,
+            car: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23FF6B00" stroke-width="2.5" class="w-full h-full"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H7c-.7 0-1.3.3-1.8.7C4.3 8.6 3 10 3 10s-2.7.6-4.5 1.1C.7 11.3 0 12.1 0 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>`,
+            wrench: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23FF6B00" stroke-width="2.5" class="w-full h-full"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+            drop: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF6B00" class="w-full h-full"><path d="M12 2.5C8 8 5 12 5 15.5 5 19.6 8.1 22 12 22s7-2.4 7-6.5C19 12 16 8 12 2.5z"/></svg>`
+        };
+
+        let state = {
+            brandLogo: null,
+            customQRIcon: null,
+            generatedQRDataURL: '',
+            qrIsFresh: false,
+            currentViewMode: 'single',
+            qrIcon: 'oil',
+            userTouchedZoom: false
+        };
+
+        const ALL_INPUTS = [
+            'bgColor','textColor','secondaryColor','cardStyle','labelRadius',
+            'headerText1','headerColor1','headerText2','headerColor2','headerOffsetY',
+            'subTitleText','subOffsetY','brandText','brandOffsetY','footerText','footerOffsetY','nextChangeText','nextOffsetY',
+            'headerSize','brandSize','qrText','qrBgColor','qrBorderColor','qrBorderRadius','qrSizePercent',
+            'labelWidthMm','labelHeightMm','pageMargin','gridGap',
+            'versoTitle','versoTitleOffsetY','versoFields','versoTableOffsetY','versoFontSize','versoLineGap','versoLineStyle','versoLineWidth'
+        ];
+
+        function compressImage(base64Str, maxWidth, maxHeight, callback) {
+            const img = new Image();
+            img.onload = function() {
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth || height > maxHeight) {
+                    if (width / height > maxWidth / maxHeight) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    } else {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                callback(canvas.toDataURL('image/png'));
+            };
+            img.src = base64Str;
+        }
+
+        function saveState() {
+            try {
+                const config = {};
+                ALL_INPUTS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) config[id] = el.value;
+                });
+                ['enableVerso','mirrorMode','mirrorVerso'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) config[id] = el.checked;
+                });
+                config.brandLogo = state.brandLogo;
+                config.customQRIcon = state.customQRIcon;
+                config.qrIcon = state.qrIcon;
+                localStorage.setItem('etiquetaStudioData_v8', JSON.stringify(config));
+            } catch(e) { console.warn('Falha ao salvar preferências', e); }
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem('etiquetaStudioData_v8');
+                if (!raw) return;
+                const config = JSON.parse(raw);
+                ALL_INPUTS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && config[id] !== undefined) el.value = config[id];
+                });
+                ['enableVerso','mirrorMode','mirrorVerso'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && config[id] !== undefined) el.checked = config[id];
+                });
+                if (config.brandLogo) state.brandLogo = config.brandLogo;
+                if (config.customQRIcon) state.customQRIcon = config.customQRIcon;
+                if (config.qrIcon) {
+                    state.qrIcon = config.qrIcon;
+                    const sel = document.getElementById('qrIconSelect');
+                    if (sel) sel.value = config.qrIcon;
+                }
+            } catch(e) { console.warn('Falha ao carregar dados salvos', e); }
+        }
+
+        function openMobileSidebar(tab) {
+            if (tab) switchTab(tab);
+            document.getElementById('mainSidebar').classList.add('mobile-open');
+            document.getElementById('mobileOverlay').classList.add('active');
+        }
+
+        function closeMobileSidebar() {
+            document.getElementById('mainSidebar').classList.remove('mobile-open');
+            document.getElementById('mobileOverlay').classList.remove('active');
+        }
+
+        function switchTab(tabName) {
+            ['design','textos','icons','qrcode','verso','layout'].forEach(t => {
+                const content = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`tab-btn-${t}`);
+                if (!content || !btn) return;
+                if (t === tabName) {
+                    content.classList.remove('hidden');
+                    btn.classList.add('text-orange-500', 'border-orange-500');
+                    btn.classList.remove('text-slate-400', 'border-transparent');
+                } else {
+                    content.classList.add('hidden');
+                    btn.classList.remove('text-orange-500', 'border-orange-500');
+                    btn.classList.add('text-slate-400', 'border-transparent');
+                }
+            });
+        }
+
+        function updateSliderLabel(id, text) { 
+            const el = document.getElementById(id); 
+            if (el) el.innerText = text; 
+        }
+
+        const TEMPLATES = {
+            classic: { bg:'#FF6B00', text:'#FFFFFF', secondary:'#1E293B', cardStyle:'flat' },
+            dark:    { bg:'#111827', text:'#FFFFFF', secondary:'#F97316', cardStyle:'gradient' },
+            blue:    { bg:'#2563EB', text:'#FFFFFF', secondary:'#1E3A8A', cardStyle:'flat' },
+            green:   { bg:'#16A34A', text:'#FFFFFF', secondary:'#14532D', cardStyle:'gradient' },
+            red:     { bg:'#DC2626', text:'#FFFFFF', secondary:'#7F1D1D', cardStyle:'bordered' },
+            purple:  { bg:'#7C3AED', text:'#FFFFFF', secondary:'#4C1D95', cardStyle:'gradient' }
+        };
+
+        function applyTemplate(name, ev) {
+            const t = TEMPLATES[name]; if (!t) return;
+            document.getElementById('bgColor').value = t.bg;
+            document.getElementById('textColor').value = t.text;
+            document.getElementById('secondaryColor').value = t.secondary;
+            document.getElementById('cardStyle').value = t.cardStyle;
+            document.querySelectorAll('.template-card').forEach(el => el.classList.remove('active'));
+            if (ev && ev.currentTarget) ev.currentTarget.classList.add('active');
+            updateAllLive();
+        }
+
+        function markQRStale() { state.qrIsFresh = false; }
+
+        function changeQRIcon(val) {
+            state.qrIcon = val;
+            generateQRCode();
+        }
+
+        function handleQRIconUpload(event) {
+            const files = Array.from(event.target.files || []);
+            if (files.length === 0) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                compressImage(e.target.result, 120, 120, function(compressedBase64) {
+                    state.customQRIcon = compressedBase64;
+                    state.qrIcon = 'custom';
+                    const sel = document.getElementById('qrIconSelect');
+                    if (sel) sel.value = 'custom';
+                    generateQRCode();
+                });
+            };
+            reader.readAsDataURL(files[0]);
+        }
+
+        function generateQRCode() {
+            const qrText = document.getElementById('qrText').value.trim() || 'https://instagram.com';
+            const tempDiv = document.createElement('div');
+            tempDiv.style.cssText = 'position:fixed; left:-99999px; top:0; width:300px; height:300px;';
+            document.body.appendChild(tempDiv);
+
+            try {
+                new QRCode(tempDiv, { text: qrText, width: 300, height: 300, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+            } catch(e) {
+                if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
+                updateAllLive();
+                return;
+            }
+
+            setTimeout(() => {
+                const sourceEl = tempDiv.querySelector('canvas') || tempDiv.querySelector('img');
+                if (sourceEl) {
+                    state.generatedQRDataURL = (sourceEl.tagName === 'CANVAS') ? sourceEl.toDataURL('image/png') : sourceEl.src;
+                    state.qrIsFresh = true;
+                    updateAllLive();
+                }
+                if (document.body.contains(tempDiv)) document.body.removeChild(tempDiv);
+            }, 100);
+        }
+
+        function handleLogoUpload(event) {
+            const files = Array.from(event.target.files || []);
+            if (files.length === 0) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                compressImage(e.target.result, 300, 150, function(compressedBase64) {
+                    state.brandLogo = compressedBase64;
+                    updateCurrentLogoPreview();
+                    updateAllLive();
+                });
+            };
+            reader.readAsDataURL(files[0]);
+        }
+
+        function updateCurrentLogoPreview() {
+            const preview = document.getElementById('currentLogoPreview');
+            if (!preview) return;
+            if (state.brandLogo) {
+                preview.innerHTML = `<img src="${state.brandLogo}" class="max-h-12 max-w-full object-contain">`;
+            } else {
+                preview.innerHTML = `<p class="text-[10px] text-slate-500">Nenhuma Imagem de Logo Enviada</p>`;
+            }
+        }
+
+        function removeBrandLogo() {
+            state.brandLogo = null;
+            updateCurrentLogoPreview();
+            updateAllLive();
+        }
+
+        function createSingleLabelHTML() {
+            const bgColor = document.getElementById('bgColor').value;
+            const textColor = document.getElementById('textColor').value;
+            const secondaryColor = document.getElementById('secondaryColor').value;
+            const cardStyle = document.getElementById('cardStyle').value;
+
+            const headerText1 = document.getElementById('headerText1').value;
+            const headerColor1 = document.getElementById('headerColor1').value;
+            const headerText2 = document.getElementById('headerText2').value;
+            const headerColor2 = document.getElementById('headerColor2').value;
+
+            const subTitleText = document.getElementById('subTitleText').value;
+            const brandText = document.getElementById('brandText').value;
+            const footerText = document.getElementById('footerText').value;
+            const nextChangeText = document.getElementById('nextChangeText').value;
+            const labelRadius = document.getElementById('labelRadius').value;
+            const mirrorMode = document.getElementById('mirrorMode').checked;
+
+            const headerOffsetY = document.getElementById('headerOffsetY').value + 'px';
+            const subOffsetY = document.getElementById('subOffsetY').value + 'px';
+            const brandOffsetY = document.getElementById('brandOffsetY').value + 'px';
+            const footerOffsetY = document.getElementById('footerOffsetY').value + 'px';
+            const nextOffsetY = document.getElementById('nextOffsetY').value + 'px';
+
+            const headerSize = document.getElementById('headerSize').value + 'px';
+            const brandSize = document.getElementById('brandSize').value + 'px';
+
+            const qrBgColor = document.getElementById('qrBgColor').value;
+            const qrBorderColor = document.getElementById('qrBorderColor').value;
+            const qrBorderRadius = document.getElementById('qrBorderRadius').value + 'px';
+            const qrSizePercent = document.getElementById('qrSizePercent').value + '%';
+
+            let cardExtraStyle = '';
+            if (cardStyle === 'gradient') cardExtraStyle = `background: linear-gradient(135deg, ${bgColor} 0%, ${secondaryColor} 100%);`;
+            else if (cardStyle === 'striped') cardExtraStyle = `background: repeating-linear-gradient(45deg, ${bgColor}, ${bgColor} 10px, ${secondaryColor} 10px, ${secondaryColor} 20px);`;
+            else if (cardStyle === 'bordered') cardExtraStyle = `background-color: ${bgColor}; border: 3px double ${secondaryColor};`;
+            else cardExtraStyle = `background-color: ${bgColor};`;
+
+            let headerHTML = '';
+            if (headerText1 || headerText2) {
+                headerHTML = `<div class="w-full flex items-center justify-center gap-1 leading-none uppercase font-black" style="font-size:${headerSize}; transform: translateY(${headerOffsetY});">
+                    <span style="color:${headerColor1}">${headerText1}</span>
+                    <span style="color:${headerColor2}">${headerText2}</span>
+                </div>`;
+            }
+
+            let logoImgHTML = '';
+            if (state.brandLogo) {
+                logoImgHTML = `<div class="flex items-center justify-center max-h-7 w-full"><img src="${state.brandLogo}" class="max-h-6 max-w-[90%] object-contain" alt="Logo"></div>`;
+            }
+
+            let brandNameHTML = '';
+            if (brandText) {
+                brandNameHTML = `<div class="font-black tracking-tight uppercase leading-tight" style="color:${textColor}; font-size:${brandSize};">${brandText}</div>`;
+            }
+
+            let brandHTML = `<div class="w-full flex flex-col items-center justify-center gap-0.5" style="transform: translateY(${brandOffsetY});">
+                ${logoImgHTML}
+                ${brandNameHTML}
+            </div>`;
+
+            let nextChangeHTML = nextChangeText ? `<div class="rounded font-black uppercase" style="background:${textColor}22; color:${textColor}; font-size:7.5px; padding:2px 6px; transform: translateY(${nextOffsetY});">Próx.: ${nextChangeText}</div>` : '';
+
+            let centerIconHTML = '';
+            if (state.qrIcon === 'custom' && state.customQRIcon) {
+                centerIconHTML = `<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div class="w-1/4 h-1/4 bg-white rounded p-0.5 shadow flex items-center justify-center overflow-hidden"><img src="${state.customQRIcon}" class="max-w-full max-h-full object-contain"></div></div>`;
+            } else if (state.qrIcon !== 'none' && DEFAULT_ICONS[state.qrIcon]) {
+                centerIconHTML = `<div class="absolute inset-0 flex items-center justify-center pointer-events-none"><div class="w-1/4 h-1/4 bg-white rounded p-0.5 shadow flex items-center justify-center overflow-hidden">${DEFAULT_ICONS[state.qrIcon]}</div></div>`;
+            }
+
+            let qrHTML = state.generatedQRDataURL 
+                ? `<div class="relative w-full h-full flex items-center justify-center"><img src="${state.generatedQRDataURL}" class="w-full h-full object-contain">${centerIconHTML}</div>`
+                : `<div class="text-slate-400 flex items-center justify-center w-full h-full text-[8px]">QR CODE</div>`;
+
+            const mirrorClass = mirrorMode ? 'mirror-label' : '';
+
+            return `
+                <div class="label-card-content ${mirrorClass}" style="${cardExtraStyle} color:${textColor}; border-radius:${labelRadius}px; padding:5%; gap:2px;">
+                    ${headerHTML || '<div></div>'}
+                    <div class="shadow flex items-center justify-center p-1 border relative" style="background-color:${qrBgColor}; border-color:${qrBorderColor}; border-radius:${qrBorderRadius}; width:${qrSizePercent}; aspect-ratio:1;">
+                        ${qrHTML}
+                    </div>
+                    <div class="w-full flex flex-col items-center justify-center gap-1">
+                        ${subTitleText ? `<span class="font-semibold leading-none opacity-90 uppercase tracking-wider" style="font-size:8px; transform: translateY(${subOffsetY});">${subTitleText}</span>` : ''}
+                        ${brandHTML}
+                        ${footerText ? `<p class="font-bold opacity-90 leading-tight" style="font-size:7px; transform: translateY(${footerOffsetY});">${footerText}</p>` : ''}
+                        ${nextChangeHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        function createVersoHTML() {
+            const title = document.getElementById('versoTitle').value;
+            const fieldsText = document.getElementById('versoFields').value;
+            const bgColor = document.getElementById('bgColor').value;
+            const mirrorVerso = document.getElementById('mirrorVerso').checked;
+            const labelRadius = document.getElementById('labelRadius').value;
+
+            const versoTitleOffsetY = document.getElementById('versoTitleOffsetY').value + 'px';
+            const versoTableOffsetY = document.getElementById('versoTableOffsetY').value + 'px';
+
+            const versoFontSize = (document.getElementById('versoFontSize') ? document.getElementById('versoFontSize').value : 7) + 'px';
+            const versoLineGap = (document.getElementById('versoLineGap') ? document.getElementById('versoLineGap').value : 2.5) + 'px';
+            const versoLineStyle = document.getElementById('versoLineStyle') ? document.getElementById('versoLineStyle').value : 'dashed';
+            const versoLineWidth = (document.getElementById('versoLineWidth') ? document.getElementById('versoLineWidth').value : 1) + 'px';
+
+            const fields = fieldsText.split('\n').filter(f => f.trim() !== '');
+            const fieldsHTML = fields.map(field => `
+                <div class="flex items-end gap-1" style="min-height:11px">
+                    <span style="font-size:${versoFontSize}; font-weight:bold; white-space:nowrap; color:#1e293b">${field}</span>
+                    <div style="flex:1; border-bottom:${versoLineWidth} ${versoLineStyle} #cbd5e1; height:6px"></div>
+                </div>
+            `).join('');
+
+            const mirrorClass = mirrorVerso ? 'mirror-label' : '';
+
+            return `
+                <div class="w-full h-full flex flex-col ${mirrorClass}" style="background:#ffffff; color:#1e293b; border-radius:${labelRadius}px; padding:5%; box-sizing:border-box;">
+                    ${title ? `<div style="text-align:center; margin-bottom:3px; padding-bottom:2px; border-bottom:2px solid ${bgColor}; transform: translateY(${versoTitleOffsetY});">
+                        <h3 style="font-size:8px; font-weight:900; text-transform:uppercase; color:#0f172a">${title}</h3>
+                    </div>` : ''}
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-start; gap:${versoLineGap}; overflow:hidden; transform: translateY(${versoTableOffsetY});">
+                        ${fieldsHTML || `<p style="font-size:7px; color:#94a3b8; text-align:center;">Adicione campos</p>`}
+                    </div>
+                    <div style="text-align:center; margin-top:2px; padding-top:2px; border-top:1px solid #e2e8f0">
+                        <p style="font-size:6px; font-weight:bold; color:#64748b">Obrigado pela preferência!</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function recalculateAutoGrid() {
+            const width = parseFloat(document.getElementById('labelWidthMm').value) || 50;
+            const height = parseFloat(document.getElementById('labelHeightMm').value) || 50;
+            const margin = parseFloat(document.getElementById('pageMargin').value) || 10;
+            const gap = parseFloat(document.getElementById('gridGap').value) || 4;
+
+            const availW = 210 - (margin * 2);
+            const availH = 297 - (margin * 2);
+
+            const cols = Math.max(1, Math.floor((availW + gap) / (width + gap)));
+            const rows = Math.max(1, Math.floor((availH + gap) / (height + gap)));
+
+            document.getElementById('gridCols').value = cols;
+            document.getElementById('gridRows').value = rows;
+            document.getElementById('gridCalcVal').innerText = `${cols} cols x ${rows} lins`;
+            document.getElementById('totalLabelsCount').innerText = `${cols * rows} un por folha`;
+
+            const singleF = document.getElementById('singleLabelWrapper');
+            const singleV = document.getElementById('singleVersoWrapper');
+            if (singleF) { singleF.style.width = `${width}mm`; singleF.style.height = `${height}mm`; }
+            if (singleV) { singleV.style.width = `${width}mm`; singleV.style.height = `${height}mm`; }
+
+            updateAllLive();
+        }
+
+        function updateLayoutGrid() {
+            const width = parseFloat(document.getElementById('labelWidthMm').value) || 50;
+            const height = parseFloat(document.getElementById('labelHeightMm').value) || 50;
+            const margin = parseInt(document.getElementById('pageMargin').value) || 10;
+            const gap = parseInt(document.getElementById('gridGap').value) || 4;
+            const cols = parseInt(document.getElementById('gridCols').value) || 3;
+
+            const front = document.getElementById('a4PageFront');
+            const verso = document.getElementById('a4PageVerso');
+            const labelsC = document.getElementById('labelsContainer');
+            const versoC = document.getElementById('versoContainer');
+
+            front.style.padding = `${margin}mm`;
+            verso.style.padding = `${margin}mm`;
+
+            [labelsC, versoC].forEach(c => {
+                c.style.gridTemplateColumns = `repeat(${cols}, ${width}mm)`;
+                c.style.gridAutoRows = `${height}mm`;
+                c.style.gap = `${gap}mm`;
+            });
+
+            renderLabels(width, height);
+        }
+
+        function renderLabels(widthMm, heightMm) {
+            const cols = parseInt(document.getElementById('gridCols').value) || 3;
+            const rows = parseInt(document.getElementById('gridRows').value) || 5;
+            const total = cols * rows;
+
+            const labelsC = document.getElementById('labelsContainer');
+            const versoC = document.getElementById('versoContainer');
+            const singleF = document.getElementById('singleLabelContainer');
+            const singleV = document.getElementById('singleVersoContainer');
+            const mobileLive = document.getElementById('mobileLivePreview');
+
+            const radiusValue = (document.getElementById('labelRadius') ? document.getElementById('labelRadius').value : 12) + 'px';
+            const singleFWrapper = document.getElementById('singleLabelWrapper');
+            const singleVWrapper = document.getElementById('singleVersoWrapper');
+            if (singleFWrapper) singleFWrapper.style.borderRadius = radiusValue;
+            if (singleVWrapper) singleVWrapper.style.borderRadius = radiusValue;
+
+            const w = widthMm || parseFloat(document.getElementById('labelWidthMm').value) || 50;
+            const h = heightMm || parseFloat(document.getElementById('labelHeightMm').value) || 50;
+
+            const labelMarkup = createSingleLabelHTML();
+            const versoMarkup = createVersoHTML();
+
+            let gridHTML = '', versoGridHTML = '';
+            for (let i = 0; i < total; i++) {
+                gridHTML += `<div class="label-cell" style="width:${w}mm; height:${h}mm;">${labelMarkup}</div>`;
+                versoGridHTML += `<div class="label-cell" style="width:${w}mm; height:${h}mm;">${versoMarkup}</div>`;
+            }
+            labelsC.innerHTML = gridHTML;
+            versoC.innerHTML = versoGridHTML;
+            singleF.innerHTML = labelMarkup;
+            singleV.innerHTML = versoMarkup;
+            if (mobileLive) {
+                mobileLive.innerHTML = labelMarkup;
+                mobileLive.style.borderRadius = radiusValue;
+            }
+            saveState();
+        }
+
+        function updateAllLive() {
+            updateLayoutGrid();
+            autoFitA4Sheet();
+        }
+
+        /* AJUSTE AUTOMÁTICO DE ZOOM PARA CELULAR NA VERTICAL E HORIZONTAL */
+        function autoFitA4Sheet() {
+            if (state.userTouchedZoom) return;
+            const mainWs = document.getElementById('mainWorkspace');
+            if (!mainWs) return;
+
+            const availWidth = mainWs.clientWidth - 20; 
+            if (availWidth <= 0) return;
+
+            // 210mm equivale a aprox 793px em 96dpi de tela
+            const baseSheetPixelWidth = 793;
+            let targetScale = availWidth / baseSheetPixelWidth;
+            targetScale = Math.min(Math.max(targetScale, 0.25), 1.0);
+
+            const percent = Math.round(targetScale * 100);
+            const zoomRange = document.getElementById('zoomRange');
+            const zoomVal = document.getElementById('zoomVal');
+
+            if (zoomRange && zoomVal) {
+                zoomRange.value = percent;
+                zoomVal.innerText = percent + '%';
+            }
+
+            const frontPage = document.getElementById('a4PageFront');
+            const versoPage = document.getElementById('a4PageVerso');
+            if (frontPage) frontPage.style.transform = `scale(${targetScale})`;
+            if (versoPage) versoPage.style.transform = `scale(${targetScale})`;
+        }
+
+        function applyZoom(val) {
+            state.userTouchedZoom = true;
+            document.getElementById('zoomVal').innerText = val + '%';
+            const scale = val / 100;
+            document.getElementById('a4PageFront').style.transform = `scale(${scale})`;
+            document.getElementById('a4PageVerso').style.transform = `scale(${scale})`;
+        }
+
+        function setViewMode(mode) {
+            state.currentViewMode = mode;
+            const frontPage = document.getElementById('a4PageFront');
+            const versoPage = document.getElementById('a4PageVerso');
+            const frontWrapper = document.getElementById('a4PageFrontWrapper');
+            const versoWrapper = document.getElementById('a4PageVersoWrapper');
+            const singlePage = document.getElementById('singlePage');
+
+            const btnSheet = document.getElementById('btn-view-sheet');
+            const btnVerso = document.getElementById('btn-view-verso');
+            const btnBoth = document.getElementById('btn-view-both');
+            const btnSingle = document.getElementById('btn-view-single');
+
+            const activeCls = "px-2.5 py-1 rounded-md text-[10px] font-bold text-white bg-orange-600 transition flex items-center gap-1";
+            const inactiveCls = "px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-400 hover:text-white transition flex items-center gap-1";
+
+            const enableVerso = document.getElementById('enableVerso').checked;
+
+            if (frontWrapper) frontWrapper.style.display = 'none';
+            if (versoWrapper) versoWrapper.style.display = 'none';
+            frontPage.style.display = 'none';
+            versoPage.style.display = 'none';
+            singlePage.style.display = 'none';
+
+            btnSheet.className = inactiveCls;
+            btnVerso.className = inactiveCls;
+            btnBoth.className = inactiveCls;
+            btnSingle.className = inactiveCls;
+
+            if (mode === 'sheet') {
+                if (frontWrapper) frontWrapper.style.display = 'flex';
+                frontPage.style.display = 'flex';
+                btnSheet.className = activeCls;
+            } else if (mode === 'verso') {
+                if (enableVerso) {
+                    if (versoWrapper) versoWrapper.style.display = 'flex';
+                    versoPage.style.display = 'flex';
+                }
+                btnVerso.className = activeCls;
+            } else if (mode === 'both') {
+                if (frontWrapper) frontWrapper.style.display = 'flex';
+                frontPage.style.display = 'flex';
+                if (enableVerso) {
+                    if (versoWrapper) versoWrapper.style.display = 'flex';
+                    versoPage.style.display = 'flex';
+                }
+                btnBoth.className = activeCls;
+            } else {
+                singlePage.style.display = 'flex';
+                btnSingle.className = activeCls;
+                document.getElementById('singleVersoWrapperWrapper').style.display = enableVerso ? 'flex' : 'none';
+            }
+
+            updateAllLive();
+        }
+
+        function updateVersoVisibility() {
+            setViewMode(state.currentViewMode);
+        }
+
+        async function exportSheetPNG() {
+            const page = (state.currentViewMode === 'verso' && document.getElementById('enableVerso').checked)
+                ? document.getElementById('a4PageVerso') 
+                : document.getElementById('a4PageFront');
+            const oldTransform = page.style.transform;
+            page.style.transform = 'none';
+            const canvas = await html2canvas(page, { scale: 2, backgroundColor: '#ffffff' });
+            page.style.transform = oldTransform;
+            const link = document.createElement('a');
+            link.download = 'etiquetas-folha-' + Date.now() + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        async function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const front = document.getElementById('a4PageFront');
+            const verso = document.getElementById('a4PageVerso');
+            const enableVerso = document.getElementById('enableVerso').checked;
+
+            const addPage = async (page) => {
+                const oldT = page.style.transform;
+                const oldD = page.style.display;
+                page.style.transform = 'none';
+                page.style.display = 'block';
+                const c = await html2canvas(page, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                page.style.transform = oldT;
+                page.style.display = oldD;
+                return c.toDataURL('image/jpeg', 0.95);
+            };
+
+            pdf.addImage(await addPage(front), 'JPEG', 0, 0, 210, 297);
+            if (enableVerso) {
+                pdf.addPage();
+                pdf.addImage(await addPage(verso), 'JPEG', 0, 0, 210, 297);
+            }
+            pdf.save('etiquetas-troca-oleo.pdf');
+        }
+
+        function printAll() {
+            window.print();
+        }
+
+        function exportSVG() {
+            const widthMm = parseFloat(document.getElementById('labelWidthMm').value) || 50;
+            const heightMm = parseFloat(document.getElementById('labelHeightMm').value) || 50;
+            const bgColor = document.getElementById('bgColor').value;
+            const textColor = document.getElementById('textColor').value;
+            const secondaryColor = document.getElementById('secondaryColor').value;
+            const cardStyle = document.getElementById('cardStyle').value;
+
+            const headerText1 = document.getElementById('headerText1').value;
+            const headerColor1 = document.getElementById('headerColor1').value;
+            const headerText2 = document.getElementById('headerText2').value;
+            const headerColor2 = document.getElementById('headerColor2').value;
+
+            const subTitleText = document.getElementById('subTitleText').value;
+            const brandText = document.getElementById('brandText').value;
+            const footerText = document.getElementById('footerText').value;
+            const mirrorMode = document.getElementById('mirrorMode').checked;
+            const labelRadius = parseInt(document.getElementById('labelRadius').value) || 12;
+
+            const esc = (s) => String(s).replace(/[<>&"']/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;' }[c]));
+
+            let defs = '';
+            let fillAttr = `fill="${bgColor}"`;
+            if (cardStyle === 'gradient') {
+                defs = `<defs><linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${bgColor}"/><stop offset="100%" stop-color="${secondaryColor}"/></linearGradient></defs>`;
+                fillAttr = `fill="url(#bgGrad)"`;
+            }
+
+            const transformGroup = mirrorMode ? `transform="translate(${widthMm}, 0) scale(-1, 1)"` : '';
+
+            let qrImageSVG = '';
+            if (state.generatedQRDataURL) {
+                const qrW = widthMm * 0.55;
+                const qrX = (widthMm - qrW) / 2;
+                qrImageSVG = `
+                    <rect x="${qrX - 1.5}" y="14.5" width="${qrW + 3}" height="${qrW + 3}" fill="#ffffff" rx="3"/>
+                    <image x="${qrX}" y="16" width="${qrW}" height="${qrW}" href="${state.generatedQRDataURL}"/>
+                `;
+            }
+
+            let logoSVG = '';
+            if (state.brandLogo) {
+                logoSVG = `<image x="${widthMm * 0.1}" y="${heightMm - 16}" width="${widthMm * 0.8}" height="8" preserveAspectRatio="xMidYMid meet" href="${state.brandLogo}"/>`;
+            } else if (brandText) {
+                logoSVG = `<text x="${widthMm / 2}" y="${heightMm - 10}" text-anchor="middle" font-size="3.5" font-weight="bold" fill="${textColor}">${esc(brandText.toUpperCase())}</text>`;
+            }
+
+            const svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${widthMm}mm" height="${heightMm}mm" viewBox="0 0 ${widthMm} ${heightMm}">
+    ${defs}
+    <rect width="${widthMm}" height="${heightMm}" rx="${labelRadius * 0.26}" ${fillAttr}/>
+    <g ${transformGroup}>
+        <text x="${widthMm / 2}" y="10" text-anchor="middle" font-size="4" font-weight="900">
+            <tspan fill="${headerColor1}">${esc(headerText1.toUpperCase())}</tspan>
+            <tspan fill="${headerColor2}">${esc(headerText2.toUpperCase())}</tspan>
+        </text>
+        ${qrImageSVG}
+        ${subTitleText ? `<text x="${widthMm / 2}" y="${heightMm - 18}" text-anchor="middle" font-size="2.5" fill="${textColor}">${esc(subTitleText)}</text>` : ''}
+        ${logoSVG}
+        ${footerText ? `<text x="${widthMm / 2}" y="${heightMm - 4}" text-anchor="middle" font-size="2.2" fill="${textColor}">${esc(footerText)}</text>` : ''}
+    </g>
+</svg>`;
+
+            const blob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `etiqueta-vetorizada-${Date.now()}.svg`;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
+        window.addEventListener('resize', autoFitA4Sheet);
+        window.addEventListener('orientationchange', autoFitA4Sheet);
+
+        window.onload = function() {
+            lucide.createIcons();
+            loadState();
+            updateCurrentLogoPreview();
+            generateQRCode();
+            recalculateAutoGrid();
+            setViewMode('single');
+        };
+    </script>
+</body>
+</html>
